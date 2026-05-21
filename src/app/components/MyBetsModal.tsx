@@ -50,7 +50,7 @@ export default function MyBetsModal({
       >
         <div className="bg-[#191e28] flex flex-col flex-1 min-h-0 overflow-hidden rounded-tl-[12px] rounded-tr-[12px] shadow-[0px_-8px_24px_rgba(0,0,0,0.4)]">
           {/* Header */}
-          <div className="px-[16px] pt-[16px] pb-[20px] shrink-0">
+          <div className="px-[16px] pt-[16px] pb-[24px] shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-[8px] min-w-0">
                 <p className="font-['Ubuntu:Bold',sans-serif] font-bold text-[20px] text-white leading-[24px]">
@@ -108,7 +108,7 @@ export default function MyBetsModal({
             </p>
           </div>
 
-          {/* Bet list */}
+          {/* Bet list + history button */}
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
             <div className="flex flex-col">
               {bets.map((bet) => (
@@ -135,19 +135,18 @@ export default function MyBetsModal({
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
 
-          {/* History button */}
-          <div className="px-[16px] pb-[max(16px,env(safe-area-inset-bottom))] pt-[8px] shrink-0">
-            <button
-              type="button"
-              className="bg-white w-full h-[44px] rounded-[9999px] flex items-center justify-center cursor-pointer hover:bg-[rgba(255,255,255,0.9)] active:scale-[0.98] transition-all"
-            >
-              <p className="font-['Ubuntu:Bold',sans-serif] font-bold text-[12px] text-[#13171f] uppercase leading-[16px] tracking-[0.02em]">
-                История ставок
-              </p>
-            </button>
+              <div className="px-[16px] pt-[16px] pb-[max(16px,env(safe-area-inset-bottom))] shrink-0">
+                <button
+                  type="button"
+                  className="bg-white w-full h-[44px] rounded-[9999px] flex items-center justify-center cursor-pointer hover:bg-[rgba(255,255,255,0.9)] active:scale-[0.98] transition-all"
+                >
+                  <p className="font-['Ubuntu:Bold',sans-serif] font-bold text-[12px] text-[#13171f] uppercase leading-[16px] tracking-[0.02em]">
+                    История ставок
+                  </p>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
