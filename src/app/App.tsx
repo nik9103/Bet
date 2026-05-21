@@ -31,7 +31,6 @@ export default function App() {
   const [betsAccepted, setBetsAccepted] = useState(false);
   const [winAmountHighlighted, setWinAmountHighlighted] = useState(false);
   const [isBetsModalOpen, setIsBetsModalOpen] = useState(false);
-  const [isBetsModalExpanded, setIsBetsModalExpanded] = useState(true);
   const [timerSession, setTimerSession] = useState(0);
   const winHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const highlightWinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -132,17 +131,14 @@ export default function App() {
   const handleOpenBetsModal = () => {
     if (bets.length === 0) return;
     setIsBetsModalOpen(true);
-    setIsBetsModalExpanded(true);
   };
 
   const handleCloseBetsModal = () => {
     setIsBetsModalOpen(false);
-    setIsBetsModalExpanded(true);
   };
 
   const handleCollapseBetsModal = () => {
     setIsBetsModalOpen(false);
-    setIsBetsModalExpanded(true);
   };
 
   const handleUndo = () => {
@@ -167,7 +163,6 @@ export default function App() {
     setHighlightWin(false);
     setWinAmountHighlighted(false);
     setIsBetsModalOpen(false);
-    setIsBetsModalExpanded(true);
     setTimerSession((s) => s + 1);
   };
 
@@ -780,9 +775,7 @@ export default function App() {
 
         <MyBetsModal
           open={isBetsModalOpen}
-          expanded={isBetsModalExpanded}
           bets={bets}
-          totalBets={totalBets}
           potentialWin={potentialWin}
           onClose={handleCloseBetsModal}
           onCollapse={handleCollapseBetsModal}
