@@ -13,6 +13,8 @@ interface Bet {
 const BET_UNIT = 100;
 const LABEL_COLOR = "rgba(255, 255, 255, 0.3)";
 const ACCEPTED_TEXT_COLOR = "rgba(255, 255, 255, 0.2)";
+const TIMER_TOTAL_TICKS = 1000; // 10.00 seconds in centiseconds
+const MS_PER_TICK = 10;
 
 const BET_MARKETS: Record<string, { marketName: string; odds: number }> = {
   "match-player1": { marketName: "Игрок 1 победит в матче", odds: 2.3 },
@@ -24,29 +26,56 @@ const BET_MARKETS: Record<string, { marketName: string; odds: number }> = {
 
 export default function App() {
   const [bets, setBets] = useState<Bet[]>([]);
-  const [timeLeft, setTimeLeft] = useState(1000); // 10 seconds in deciseconds (10.00)
+  const [timeLeft, setTimeLeft] = useState(TIMER_TOTAL_TICKS);
   const [highlightWin, setHighlightWin] = useState(false);
   const [betsAccepted, setBetsAccepted] = useState(false);
   const [winAmountHighlighted, setWinAmountHighlighted] = useState(false);
   const [isBetsModalOpen, setIsBetsModalOpen] = useState(false);
   const [isBetsModalExpanded, setIsBetsModalExpanded] = useState(true);
+  const [timerSession, setTimerSession] = useState(0);
   const winHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const highlightWinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Timestamp-based countdown via rAF — reliable on mobile (setInterval(10ms) is throttled)
   useEffect(() => {
-    if (betsAccepted) return; // Stop timer when bets are accepted
+    if (betsAccepted) return;
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 0) {
-          setBetsAccepted(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 10); // Update every 10ms (centisecond)
+    let rafId = 0;
+    let cancelled = false;
+    const endAt = performance.now() + TIMER_TOTAL_TICKS * MS_PER_TICK;
 
-    return () => clearInterval(timer);
-  }, [betsAccepted]);
+    const tick = () => {
+      if (cancelled) return;
+
+      const remainingMs = Math.max(0, endAt - performance.now());
+      const nextTicks = Math.ceil(remainingMs / MS_PER_TICK);
+
+      setTimeLeft((prev) => (prev === nextTicks ? prev : nextTicks));
+
+      if (nextTicks <= 0) {
+        setBetsAccepted(true);
+        return;
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible" && !cancelled) {
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(tick);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [betsAccepted, timerSession]);
 
   useEffect(() => {
     if (betsAccepted) {
@@ -87,7 +116,8 @@ export default function App() {
 
     if (existingBet) {
       setHighlightWin(true);
-      setTimeout(() => setHighlightWin(false), 300);
+      if (highlightWinTimerRef.current) clearTimeout(highlightWinTimerRef.current);
+      highlightWinTimerRef.current = setTimeout(() => setHighlightWin(false), 300);
       setBets((prev) =>
         prev.map((b) => (b.id === id ? { ...b, amount: b.amount + betAmount } : b))
       );
@@ -132,12 +162,13 @@ export default function App() {
 
   const handleRestart = () => {
     setBets([]);
-    setTimeLeft(1000);
+    setTimeLeft(TIMER_TOTAL_TICKS);
     setBetsAccepted(false);
     setHighlightWin(false);
     setWinAmountHighlighted(false);
     setIsBetsModalOpen(false);
     setIsBetsModalExpanded(true);
+    setTimerSession((s) => s + 1);
   };
 
   const totalBets = bets.reduce((sum, bet) => sum + bet.amount, 0);
@@ -172,7 +203,7 @@ export default function App() {
   };
 
   return (
-    <div className="bg-[#13171f] content-stretch flex flex-col items-start relative size-full overflow-hidden">
+    <div className="bg-[#13171f] content-stretch flex flex-col items-start relative size-full min-h-dvh h-dvh overflow-hidden touch-manipulation">
       <div className="content-stretch flex flex-col items-start overflow-clip relative flex-1 w-full pb-[125px]">
         {/* Header */}
         <div className="bg-[#191e28] content-stretch drop-shadow-[0px_0.5px_0px_rgba(77,88,109,0.3)] flex h-[52px] items-center justify-between px-[16px] relative shrink-0 w-full">
@@ -300,7 +331,7 @@ export default function App() {
                               {bets.find((b) => b.id === "match-player1") ? (
                                 <div className="content-stretch flex flex-col items-start relative shrink-0 w-[28px]">
                                   <div className="content-stretch flex items-start relative shrink-0 w-full">
-                                    <div className="bg-[#00c950] h-[18px] relative rounded-[2px] shrink-0 w-[28px] animate-[scale-in_0.2s_ease-out]">
+                                    <div className="bg-[#00c950] h-[18px] relative rounded-[2px] shrink-0 w-[28px] animate-[scale-in_0.2s_ease-out] [transform:translateZ(0)]">
                                       <div className="flex flex-row items-center justify-center overflow-clip rounded-[inherit] size-full">
                                         <div className="content-stretch flex items-center justify-center relative size-full">
                                           <div className="[word-break:break-word] flex flex-col font-['JetBrains_Mono:Bold',sans-serif] font-bold justify-center leading-[0] relative shrink-0 text-[10px] text-center text-white whitespace-nowrap">
@@ -332,7 +363,7 @@ export default function App() {
                               {bets.find((b) => b.id === "match-player2") ? (
                                 <div className="content-stretch flex flex-col items-start relative shrink-0 w-[28px]">
                                   <div className="content-stretch flex items-start relative shrink-0 w-full">
-                                    <div className="bg-[#00c950] h-[18px] relative rounded-[2px] shrink-0 w-[28px] animate-[scale-in_0.2s_ease-out]">
+                                    <div className="bg-[#00c950] h-[18px] relative rounded-[2px] shrink-0 w-[28px] animate-[scale-in_0.2s_ease-out] [transform:translateZ(0)]">
                                       <div className="flex flex-row items-center justify-center overflow-clip rounded-[inherit] size-full">
                                         <div className="content-stretch flex items-center justify-center relative size-full">
                                           <div className="[word-break:break-word] flex flex-col font-['JetBrains_Mono:Bold',sans-serif] font-bold justify-center leading-[0] relative shrink-0 text-[10px] text-center text-white whitespace-nowrap">
@@ -391,7 +422,7 @@ export default function App() {
                               {bets.find((b) => b.id === "frame-player1") ? (
                                 <div className="content-stretch flex flex-col items-start relative shrink-0 w-[28px]">
                                   <div className="content-stretch flex items-start relative shrink-0 w-full">
-                                    <div className="bg-[#00c950] h-[18px] relative rounded-[2px] shrink-0 w-[28px] animate-[scale-in_0.2s_ease-out]">
+                                    <div className="bg-[#00c950] h-[18px] relative rounded-[2px] shrink-0 w-[28px] animate-[scale-in_0.2s_ease-out] [transform:translateZ(0)]">
                                       <div className="flex flex-row items-center justify-center overflow-clip rounded-[inherit] size-full">
                                         <div className="content-stretch flex items-center justify-center relative size-full">
                                           <div className="[word-break:break-word] flex flex-col font-['JetBrains_Mono:Bold',sans-serif] font-bold justify-center leading-[0] relative shrink-0 text-[10px] text-center text-white whitespace-nowrap">
@@ -423,7 +454,7 @@ export default function App() {
                               {bets.find((b) => b.id === "frame-draw") ? (
                                 <div className="content-stretch flex flex-col items-start relative shrink-0 w-[28px]">
                                   <div className="content-stretch flex items-start relative shrink-0 w-full">
-                                    <div className="bg-[#00c950] h-[18px] relative rounded-[2px] shrink-0 w-[28px] animate-[scale-in_0.2s_ease-out]">
+                                    <div className="bg-[#00c950] h-[18px] relative rounded-[2px] shrink-0 w-[28px] animate-[scale-in_0.2s_ease-out] [transform:translateZ(0)]">
                                       <div className="flex flex-row items-center justify-center overflow-clip rounded-[inherit] size-full">
                                         <div className="content-stretch flex items-center justify-center relative size-full">
                                           <div className="[word-break:break-word] flex flex-col font-['JetBrains_Mono:Bold',sans-serif] font-bold justify-center leading-[0] relative shrink-0 text-[10px] text-center text-white whitespace-nowrap">
@@ -455,7 +486,7 @@ export default function App() {
                               {bets.find((b) => b.id === "frame-player2") ? (
                                 <div className="content-stretch flex flex-col items-start relative shrink-0 w-[28px]">
                                   <div className="content-stretch flex items-start relative shrink-0 w-full">
-                                    <div className="bg-[#00c950] h-[18px] relative rounded-[2px] shrink-0 w-[28px] animate-[scale-in_0.2s_ease-out]">
+                                    <div className="bg-[#00c950] h-[18px] relative rounded-[2px] shrink-0 w-[28px] animate-[scale-in_0.2s_ease-out] [transform:translateZ(0)]">
                                       <div className="flex flex-row items-center justify-center overflow-clip rounded-[inherit] size-full">
                                         <div className="content-stretch flex items-center justify-center relative size-full">
                                           <div className="[word-break:break-word] flex flex-col font-['JetBrains_Mono:Bold',sans-serif] font-bold justify-center leading-[0] relative shrink-0 text-[10px] text-center text-white whitespace-nowrap">
@@ -637,11 +668,14 @@ export default function App() {
                     </div>
                     {/* Single progress bar — shrinks from both sides toward center */}
                     <div
-                      className="absolute bottom-[15px] h-[4px] left-1/2 -translate-x-1/2 transition-all duration-75"
+                      className={`absolute bottom-[15px] h-[4px] left-1/2 -translate-x-1/2 will-change-[width] ${
+                        betsAccepted ? "transition-[width] duration-500 ease-in-out" : ""
+                      }`}
                       style={{
                         backgroundColor: getProgressBarColor(),
                         boxShadow: `0px 0px 20px 0px ${getProgressBarColor()}`,
-                        width: betsAccepted ? "100%" : `${(timeLeft / 1000) * 100}%`,
+                        width: betsAccepted ? "100%" : `${(timeLeft / TIMER_TOTAL_TICKS) * 100}%`,
+                        transition: betsAccepted ? undefined : "none",
                       }}
                     />
                     <div
@@ -654,7 +688,7 @@ export default function App() {
                       >
                         {bets.length > 0 && (
                           <div
-                            className="absolute left-1/2 flex gap-[2px] items-start text-[8px] whitespace-nowrap transition-all duration-500 ease-in-out"
+                            className="absolute left-1/2 flex gap-[2px] items-start text-[8px] whitespace-nowrap transition-[transform,color,font-size] duration-500 ease-in-out will-change-transform"
                             style={{
                               transform: `translate(-50%, ${betsAccepted ? "14px" : "0px"})`,
                             }}
@@ -685,7 +719,7 @@ export default function App() {
                           </div>
                         )}
                         <div
-                          className="absolute left-1/2 flex flex-col justify-center whitespace-nowrap transition-all duration-500 ease-in-out"
+                          className="absolute left-1/2 flex flex-col justify-center whitespace-nowrap transition-[transform,color,font-size] duration-500 ease-in-out will-change-transform"
                           style={{
                             transform: `translate(-50%, ${bets.length > 0 ? (betsAccepted ? "0px" : "14px") : "0px"})`,
                             color: getTimerTextColor(),
@@ -758,14 +792,14 @@ export default function App() {
       <style>{`
         @keyframes scale-in {
           0% {
-            transform: scale(0);
+            transform: scale(0) translateZ(0);
             opacity: 0;
           }
           50% {
-            transform: scale(1.2);
+            transform: scale(1.2) translateZ(0);
           }
           100% {
-            transform: scale(1);
+            transform: scale(1) translateZ(0);
             opacity: 1;
           }
         }
