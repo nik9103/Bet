@@ -685,7 +685,7 @@ export default function App() {
                           <div
                             className="absolute left-1/2 flex gap-[2px] items-start text-[8px] whitespace-nowrap transition-[transform,color,font-size] duration-500 ease-in-out will-change-transform"
                             style={{
-                              transform: `translate(-50%, ${betsAccepted ? "14px" : "0px"})`,
+                              transform: "translate(-50%, 0px)",
                             }}
                           >
                             <div
@@ -716,7 +716,7 @@ export default function App() {
                         <div
                           className="absolute left-1/2 flex flex-col justify-center whitespace-nowrap transition-[transform,color,font-size] duration-500 ease-in-out will-change-transform"
                           style={{
-                            transform: `translate(-50%, ${bets.length > 0 ? (betsAccepted ? "0px" : "14px") : "0px"})`,
+                            transform: `translate(-50%, ${bets.length > 0 ? "14px" : "0px"})`,
                             color: getTimerTextColor(),
                             fontSize: betsAccepted || bets.length === 0 ? "10px" : "8px",
                           }}
